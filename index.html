@@ -53,23 +53,22 @@
         
         @keyframes spin-slow {
             from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
+            to { rotate(360deg); }
         }
         .animate-spin-slow {
             animation: spin-slow 3s linear infinite;
         }
 
-        .gpu-uplink {
-            will-change: transform;
-            transform: translate3d(0,0,0);
-        }
-        .ultra-light .glass-panel {
-            backdrop-filter: none !important;
-            background: rgba(15, 23, 42, 0.95) !important;
-        }
-        .ultra-light * {
-            box-shadow: none !important;
-            text-shadow: none !important;
+        #emergency-loader {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #020617;
+            z-index: 9999;
+            flex-direction: column;
+            gap: 1rem;
         }
     </style>
     <script type="importmap">
@@ -86,11 +85,19 @@
   }
 }
 </script>
-<link rel="stylesheet" href="/index.css">
 </head>
 <body class="selection:bg-indigo-500/30 selection:text-indigo-200">
+    <div id="emergency-loader">
+        <div style="width: 40px; height: 40px; border: 3px solid #1e293b; border-top-color: #6366f1; border-radius: 50%; animation: spin-slow 1s linear infinite;"></div>
+        <div style="font-family: 'Orbitron', sans-serif; font-size: 10px; color: #475569; letter-spacing: 2px;">INITIALIZING CORE...</div>
+    </div>
     <div id="root"></div>
     <script type="module" src="./index.tsx"></script>
-<script type="module" src="/index.tsx"></script>
+    <script>
+        window.addEventListener('load', () => {
+            const loader = document.getElementById('emergency-loader');
+            if (loader) setTimeout(() => loader.style.display = 'none', 1000);
+        });
+    </script>
 </body>
 </html>
