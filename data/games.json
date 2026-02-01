@@ -1,0 +1,55 @@
+[
+  {
+    "id": "clusterrush",
+    "title": "Cluster Rush",
+    "description": "High-speed kinetic platforming. Master momentum and shifting platforms.",
+    "category": "Action",
+    "thumbnail": "https://images.unsplash.com/photo-1590674899484-d5640e854abe?auto=format&fit=crop&q=80&w=600",
+    "url": "/clusterrush/index.html",
+    "featured": true
+  },
+  {
+    "id": "bad-parenting-1",
+    "title": "Bad Parenting 1",
+    "description": "A psychological survival strategy module. Navigate complex household dynamics and analyze environmental cues.",
+    "category": "Strategy",
+    "thumbnail": "https://images.unsplash.com/photo-1505632958218-4f23394784a6?auto=format&fit=crop&q=80&w=600",
+    "url": "https://genizymath.github.io/iframe/166.html",
+    "featured": true
+  },
+  {
+    "id": "kindergarten",
+    "title": "Kindergarten",
+    "description": "A strategic social interaction simulator with high-stakes decision making.",
+    "category": "Strategy",
+    "thumbnail": "https://images.unsplash.com/photo-1588072432836-e10032774350?auto=format&fit=crop&q=80&w=600",
+    "url": "https://genizymath.github.io/iframe/445.html",
+    "featured": true
+  },
+  {
+    "id": "kindergarten-2",
+    "title": "Kindergarten 2",
+    "description": "The advanced sequel to the tactical social interaction simulator.",
+    "category": "Strategy",
+    "thumbnail": "https://images.unsplash.com/photo-1546410531-bb4caa6b424d?auto=format&fit=crop&q=80&w=600",
+    "url": "https://genizymath.github.io/iframe/446.html",
+    "featured": true
+  },
+  {
+    "id": "slope",
+    "title": "Slope",
+    "description": "A high-speed 3D spatial reasoning challenge.",
+    "category": "Action",
+    "thumbnail": "https://images.unsplash.com/photo-1614850523296-d8c1af93d400?auto=format&fit=crop&q=80&w=600",
+    "url": "https://azgames.io/game/xlope/",
+    "featured": true
+  },
+  {
+    "id": "escape-road-classic",
+    "title": "Escape Road",
+    "description": "The tactical navigation challenge that started it all.",
+    "category": "Action",
+    "thumbnail": "https://images.unsplash.com/photo-1511884642898-4c92249e20b6?auto=format&fit=crop&q=80&w=600",
+    "url": "https://genizymath.github.io/iframe/264.html"
+  }
+]
