@@ -20,8 +20,6 @@ const mount = () => {
     } catch (error) {
       console.error("Critical: Math Hub initialization failed.", error);
     }
-  } else {
-    console.error("Critical: Root element not found in DOM.");
   }
 };
 
