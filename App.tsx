@@ -1,363 +1,282 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { HashRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { 
-  Search, 
-  LayoutGrid,
-  Sigma,
-  ChevronRight,
-  Play,
-  ArrowLeft,
-  Settings,
-  Shield,
-  Ghost,
-  EyeOff,
-  Sparkles,
-  ExternalLink,
-  Cpu,
-  Zap,
-  Trash2,
-  Sun,
-  Maximize,
-  Terminal
+  Search, Sigma, Target, Zap, Play, ArrowLeft, Maximize, 
+  Bot, Send, Cpu, Settings, Ghost, X, Shield, Info, 
+  Flame, Trophy, Clock, LayoutGrid, Terminal, ChevronRight
 } from 'lucide-react';
 import htm from 'htm';
-import { GameCategory } from './types.ts';
-import { GAMES } from './data/games.ts';
-import { getGameGuide } from './services/geminiService.ts';
+import { GoogleGenAI } from "@google/genai";
 
 const html = htm.bind(React.createElement);
 
-const PANIC_URL = "https://www.google.com/search?q=calculus+problem+solving+techniques+2025";
+// --- Tactical Assets ---
+const GameCategory = {
+  ACTION: 'Action',
+  STRATEGY: 'Strategy',
+  DRIVING: 'Kinetic',
+  RETRO: 'Legacy'
+};
 
-const StealthProtocol = {
-  launch: () => {
-    const url = window.location.href;
-    const win = window.open('about:blank', '_blank');
-    if (!win) {
-      alert("Stealth Protocol Blocked: Please enable popups.");
-      return;
-    }
-
-    const doc = win.document;
-    doc.title = "Google Docs";
-    
-    const link = doc.createElement('link') as HTMLLinkElement;
-    link.rel = 'icon';
-    link.href = 'https://ssl.gstatic.com/docs/documents/images/kix-favicon7.ico';
-    doc.head.appendChild(link);
-
-    const iframe = doc.createElement('iframe');
-    iframe.src = url;
-    iframe.style.position = 'fixed';
-    iframe.style.top = '0';
-    iframe.style.left = '0';
-    iframe.style.width = '100%';
-    iframe.style.height = '100%';
-    iframe.style.border = 'none';
-    iframe.style.backgroundColor = '#020617';
-    
-    doc.body.style.margin = '0';
-    doc.body.style.padding = '0';
-    doc.body.style.overflow = 'hidden';
-    doc.body.appendChild(iframe);
-
-    setTimeout(() => {
-      window.location.replace(PANIC_URL);
-    }, 150);
+const GAMES = [
+  {
+    id: 'slope',
+    title: 'Slope',
+    description: 'High-speed 3D spatial reasoning. Navigate gravity-defying courses with sub-millisecond precision.',
+    category: GameCategory.ACTION,
+    thumbnail: 'https://images.unsplash.com/photo-1614850523296-d8c1af93d400?auto=format&fit=crop&q=80&w=600',
+    url: 'https://azgames.io/game/xlope/'
+  },
+  {
+    id: 'clusterrush',
+    title: 'Cluster Rush',
+    description: 'Kinetic platforming module. Master momentum across shifting sectors and obstacle clusters.',
+    category: GameCategory.ACTION,
+    thumbnail: 'https://images.unsplash.com/photo-1590674899484-d5640e854abe?auto=format&fit=crop&q=80&w=600',
+    url: 'https://genizymath.github.io/iframe/81.html'
+  },
+  {
+    id: 'bad-parenting-1',
+    title: 'Bad Parenting 1',
+    description: 'Psychological survival strategy. Analyze environmental cues and complex household dynamics.',
+    category: GameCategory.STRATEGY,
+    thumbnail: 'https://images.unsplash.com/photo-1505632958218-4f23394784a6?auto=format&fit=crop&q=80&w=600',
+    url: 'https://genizymath.github.io/iframe/166.html'
+  },
+  {
+    id: 'kindergarten',
+    title: 'Kindergarten',
+    description: 'High-stakes social interaction simulator. Navigate school-yard diplomacy in a tactical environment.',
+    category: GameCategory.STRATEGY,
+    thumbnail: 'https://images.unsplash.com/photo-1588072432836-e10032774350?auto=format&fit=crop&q=80&w=600',
+    url: 'https://genizymath.github.io/iframe/445.html'
+  },
+  {
+    id: 'escape-road',
+    title: 'Escape Road',
+    description: 'Tactical navigation module. Calibrate reflexes for high-density urban transit avoidance.',
+    category: GameCategory.DRIVING,
+    thumbnail: 'https://images.unsplash.com/photo-1511884642898-4c92249e20b6?auto=format&fit=crop&q=80&w=600',
+    url: 'https://genizymath.github.io/iframe/264.html'
+  },
+  {
+    id: 'cookie-clicker',
+    title: 'Cookie Clicker',
+    description: 'Infinite resource optimization. Scale production via massive algorithmic efficiency.',
+    category: GameCategory.RETRO,
+    thumbnail: 'https://images.unsplash.com/photo-1499636136210-6f4ee915583e?auto=format&fit=crop&q=80&w=600',
+    url: 'https://orteil.dashnet.org/cookieclicker/'
+  },
+  {
+    id: 'blade-ball',
+    title: 'Blade Ball',
+    description: 'Defensive reflex engine. Master time-dilation and projectile deflection vectors in combat.',
+    category: GameCategory.ACTION,
+    thumbnail: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&q=80&w=600',
+    url: 'https://cdn.jsdelivr.net/gh/Loddypof/gitapp@581c119c1d6222694218df114c2da57271ab67e7/template/index.html'
   }
-};
+];
 
-const SettingsView = ({ cloakEnabled, onToggleCloak, performanceSettings, onUpdatePerformance }) => {
+const ARES_HUD = () => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [input, setInput] = useState('');
+  const [messages, setMessages] = useState([{ role: 'ai', text: 'ARES-1 Tactical Online. Signal established.' }]);
+  const [loading, setLoading] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [messages]);
+
+  const handleSend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || loading) return;
+    const userMsg = input.trim();
+    setInput('');
+    setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
+    setLoading(true);
+
+    try {
+      const apiKey = (window as any).process?.env?.API_KEY || '';
+      const ai = new GoogleGenAI({ apiKey });
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: userMsg,
+        config: {
+          systemInstruction: 'You are ARES-1, a Tactical Support AI. Provide expert gaming strategies. Use technical, military terminology.'
+        }
+      });
+      setMessages(prev => [...prev, { role: 'ai', text: response.text || 'SIGNAL_LOST' }]);
+    } catch (err) {
+      setMessages(prev => [...prev, { role: 'ai', text: 'COMM_FAILURE: UPLINK_LOST' }]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return html`
-    <div className="space-y-12 animate-in max-w-4xl">
-      <div className="space-y-2">
-        <h2 className="font-orbitron text-4xl font-black text-white uppercase tracking-tighter flex items-center gap-4">
-          <${Settings} className="w-8 h-8 text-indigo-500" />
-          System Configuration
-        </h2>
-        <p className="text-sm text-slate-500 font-bold uppercase tracking-widest">Global Operational Parameters</p>
-      </div>
-
-      <div className="space-y-10">
-        <section className="space-y-6">
-          <h3 className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.4em] flex items-center gap-2">
-            <${Shield} className="w-3 h-3" />
-            01 // Security Protocols
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="p-8 rounded-[2rem] bg-indigo-600/5 border border-indigo-500/10 space-y-6 flex flex-col justify-between">
-              <div>
-                <div className="flex items-center gap-4 text-indigo-400 mb-4">
-                  <${Ghost} className="w-6 h-6" />
-                  <h3 className="text-sm font-black text-white uppercase tracking-widest">Stealth Uplink</h3>
-                </div>
-                <p className="text-xs text-slate-400 leading-relaxed font-medium">
-                  Initializes an isolated about:blank wrapper to bypass local browser history and session logging.
-                </p>
-              </div>
-              <button onClick=${StealthProtocol.launch} className="w-full flex items-center justify-center gap-3 py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-xl transition-all uppercase text-[10px] tracking-widest shadow-lg shadow-indigo-600/20">
-                <${ExternalLink} className="w-4 h-4" />
-                Execute Protocol
-              </button>
-            </div>
-
-            <button onClick=${onToggleCloak} className=${`flex flex-col justify-between p-8 rounded-[2rem] border transition-all text-left ${cloakEnabled ? 'bg-green-500/10 border-green-500/20' : 'bg-slate-900/50 border-white/5 hover:bg-white/5'}`}>
-              <div className="flex items-center justify-between w-full mb-8">
-                <${EyeOff} className=${`w-6 h-6 ${cloakEnabled ? 'text-green-400' : 'text-slate-600'}`} />
-                <div className=${`w-12 h-6 rounded-full relative transition-colors ${cloakEnabled ? 'bg-green-500' : 'bg-slate-700'}`}>
-                  <div className=${`absolute top-1.5 w-3 h-3 bg-white rounded-full transition-all ${cloakEnabled ? 'left-7' : 'left-2'}`}></div>
+    <div className=${`fixed bottom-8 right-8 z-[100] transition-all duration-500 ${isOpen ? 'w-[320px] h-[480px]' : 'w-14 h-14'}`}>
+      ${!isOpen ? html`
+        <button onClick=${() => setIsOpen(true)} className="w-full h-full bg-indigo-600 rounded-2xl flex items-center justify-center shadow-2xl border border-indigo-400/50 hover:scale-110 active:scale-95 transition-all">
+          <${Bot} className="w-6 h-6 text-white" />
+        </button>
+      ` : html`
+        <div className="w-full h-full glass-panel rounded-3xl overflow-hidden flex flex-col border border-indigo-500/30 shadow-2xl">
+          <div className="p-4 bg-indigo-600/20 border-b border-indigo-500/10 flex items-center justify-between">
+            <span className="font-orbitron text-[10px] font-black uppercase tracking-widest text-indigo-100">ARES-1 TACTICAL</span>
+            <button onClick=${() => setIsOpen(false)} className="p-1 hover:bg-white/10 rounded-lg text-slate-400"><${X} className="w-4 h-4" /></button>
+          </div>
+          <div ref=${scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-950/40 font-mono text-[11px] scrollbar-hide">
+            ${messages.map((m, i) => html`
+              <div key=${i} className=${`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div className=${`max-w-[85%] p-3 rounded-2xl ${m.role === 'user' ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-slate-900 border border-white/5 text-indigo-300 rounded-tl-none'}`}>
+                  ${m.text}
                 </div>
               </div>
-              <div className="space-y-2">
-                <h3 className="text-sm font-black text-white uppercase tracking-widest">Tab Masking</h3>
-                <p className="text-xs text-slate-500 font-medium">Instantly disguise tab metadata as "Google Docs".</p>
-              </div>
-            </button>
+            `)}
+            ${loading && html`<div className="text-indigo-500/30 italic animate-pulse px-2 text-[9px]">ANALYZING...</div>`}
           </div>
-        </section>
-
-        <section className="space-y-6">
-          <h3 className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.4em] flex items-center gap-2">
-            <${Zap} className="w-3 h-3" />
-            02 // Neural Tuning
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <button onClick=${() => onUpdatePerformance('gpuBoost', !performanceSettings.gpuBoost)} className=${`flex flex-col p-6 rounded-[2rem] border transition-all text-left ${performanceSettings.gpuBoost ? 'bg-indigo-500/10 border-indigo-500/20' : 'bg-slate-900/50 border-white/5 hover:bg-white/5'}`}>
-              <${Cpu} className=${`w-6 h-6 mb-4 ${performanceSettings.gpuBoost ? 'text-indigo-400' : 'text-slate-600'}`} />
-              <h3 className="text-xs font-black text-white uppercase tracking-widest">Hardware Uplink</h3>
-              <p className="text-[10px] text-slate-500 font-medium mt-1">Enable GPU frame buffering.</p>
-            </button>
-            <button onClick=${() => onUpdatePerformance('ultraLight', !performanceSettings.ultraLight)} className=${`flex flex-col p-6 rounded-[2rem] border transition-all text-left ${performanceSettings.ultraLight ? 'bg-indigo-500/10 border-indigo-500/20' : 'bg-slate-900/50 border-white/5 hover:bg-white/5'}`}>
-              <${Sun} className=${`w-6 h-6 mb-4 ${performanceSettings.ultraLight ? 'text-indigo-400' : 'text-slate-600'}`} />
-              <h3 className="text-xs font-black text-white uppercase tracking-widest">Resource Saver</h3>
-              <p className="text-[10px] text-slate-500 font-medium mt-1">Strip blurs and shadows.</p>
-            </button>
-            <button onClick=${() => { localStorage.clear(); window.location.reload(); }} className="flex flex-col p-6 rounded-[2rem] border border-red-500/10 bg-red-500/5 hover:bg-red-500/10 transition-all text-left group">
-              <${Trash2} className="w-6 h-6 mb-4 text-red-400" />
-              <h3 className="text-xs font-black text-white uppercase tracking-widest">Wipe Memory</h3>
-              <p className="text-[10px] text-slate-500 font-medium mt-1">Clear cache and refresh.</p>
-            </button>
-          </div>
-        </section>
-      </div>
+          <form onSubmit=${handleSend} className="p-3 bg-slate-900/80 border-t border-white/5 flex gap-2">
+            <input type="text" value=${input} onInput=${(e: any) => setInput(e.target.value)} placeholder="Query..." className="flex-1 bg-black/50 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+            <button type="submit" className="p-2 bg-indigo-600 rounded-xl text-white"><${Send} className="w-4 h-4" /></button>
+          </form>
+        </div>
+      `}
     </div>
   `;
 };
 
-const Navbar = ({ onSearch }) => html`
-  <nav className="sticky top-0 z-50 glass-panel border-b border-white/5 px-6 py-4">
-    <div className="max-w-[1600px] mx-auto flex items-center justify-between gap-8">
-      <${Link} to="/" className="flex items-center gap-3 shrink-0">
-        <div className="bg-indigo-600 p-2.5 rounded-xl shadow-lg transition-transform hover:rotate-12">
-          <${Sigma} className="w-5 h-5 text-white" />
-        </div>
-        <span className="font-orbitron text-lg font-black tracking-tighter text-white uppercase hidden sm:inline">Math Hub</span>
-      <//>
+const App = () => {
+  const [search, setSearch] = useState('');
+  const [category, setCategory] = useState('all');
+  const [cloak, setCloak] = useState(() => localStorage.getItem('mh_cloak_v16') === 'true');
 
-      <div className="flex-1 max-w-xl relative group">
-        <${Search} className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-indigo-400 transition-colors" />
-        <input 
-          type="text" 
-          placeholder="Scan modules..." 
-          onInput=${(e) => onSearch(e.target.value)}
-          className="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:border-indigo-500 transition-all text-slate-200 placeholder:text-slate-600"
-        />
-      </div>
+  useEffect(() => {
+    localStorage.setItem('mh_cloak_v16', cloak.toString());
+    document.title = cloak ? "about:blank" : "Math Hub | Tactical Command";
+    
+    const handlePanic = (e: KeyboardEvent) => { 
+      if (e.key === 'Escape') window.location.replace("https://google.com"); 
+    };
+    window.addEventListener('keydown', handlePanic);
+    return () => window.removeEventListener('keydown', handlePanic);
+  }, [cloak]);
 
-      <div className="flex items-center gap-4">
-        <${Link} to="/settings" className="p-3 rounded-2xl glass-panel border border-white/5 text-slate-400 hover:text-indigo-400 transition-all group">
-          <${Settings} className="w-5 h-5 group-hover:rotate-90 transition-transform duration-500" />
-        <//>
-      </div>
-    </div>
-  </nav>
-`;
-
-const Sidebar = () => {
-  const location = useLocation();
-  const items = [
-    { id: 'all', name: 'Modules', icon: LayoutGrid, path: '/' },
-    { id: 'settings', name: 'Settings', icon: Settings, path: '/settings' },
-  ];
+  const filtered = useMemo(() => GAMES.filter(g => (category === 'all' || g.category === category) && g.title.toLowerCase().includes(search.toLowerCase())), [search, category]);
 
   return html`
-    <aside className="w-64 hidden xl:block sticky top-24 h-[calc(100vh-8rem)] pr-6 space-y-10">
-      <div className="space-y-1">
-        <p className="px-4 text-[10px] font-black uppercase tracking-widest text-slate-600 mb-6">Uplink Directory</p>
-        ${items.map(item => html`
-          <${Link} key=${item.id} to="${item.path}" className=${`w-full flex items-center gap-4 px-4 py-3.5 rounded-xl text-xs font-bold transition-all ${location.pathname === item.path ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/20' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}>
-            <${item.icon} className="w-4 h-4" />
-            ${item.name}
-          <//>
-        `)}
-      </div>
-      <div className="pt-10 border-t border-white/5 space-y-6">
-        <div className="p-5 glass-panel rounded-2xl border border-white/5 space-y-4">
-          <div className="flex items-center justify-between text-[10px] font-bold">
-            <span className="text-slate-500 uppercase tracking-widest">Neural Link</span>
-            <span className="text-indigo-400 uppercase">Synced</span>
+    <${Router}>
+      <div className="min-h-screen bg-[#020617] text-slate-200 flex flex-col font-inter selection:bg-indigo-600/40">
+        <nav className="sticky top-0 z-50 glass-panel border-b border-white/10 px-8 py-6">
+          <div className="max-w-[1600px] mx-auto flex items-center justify-between gap-12">
+            <${Link} to="/" className="flex items-center gap-4 shrink-0 transition-transform hover:scale-105 active:scale-95">
+              <div className="bg-indigo-600 p-3 rounded-2xl shadow-lg shadow-indigo-600/20"><${Sigma} className="w-7 h-7 text-white" /></div>
+              <span className="font-orbitron text-3xl font-black tracking-tighter text-white uppercase hidden sm:block">MATH HUB</span>
+            <//>
+            <div className="flex-1 max-w-2xl relative">
+              <${Search} className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-600" />
+              <input type="text" placeholder="Scan assets..." value=${search} onInput=${(e: any) => setSearch(e.target.value)} className="w-full bg-slate-900/60 border border-white/10 rounded-2xl py-4 pl-16 pr-8 text-sm text-white focus:outline-none focus:border-indigo-500 transition-all font-mono" />
+            </div>
+            <div className="flex items-center gap-4">
+              <button onClick=${() => setCloak(!cloak)} title="Stealth Protocol" className=${`p-4 rounded-2xl border transition-all ${cloak ? 'bg-green-600/10 text-green-400 border-green-500/20 shadow-[0_0_15px_rgba(34,197,94,0.2)]' : 'bg-white/5 text-slate-500 border-white/5 hover:text-white'}`}><${Ghost} className="w-6 h-6" /></button>
+            </div>
           </div>
-          <div className="h-1 bg-white/5 rounded-full overflow-hidden">
-            <div className="h-full w-[88%] bg-indigo-500 shadow-[0_0_8px_#6366f1]"></div>
-          </div>
-        </div>
-      </div>
-    </aside>
-  `;
-};
+        </nav>
 
-const HomePage = ({ games, searchQuery }) => {
-  const filtered = useMemo(() => {
-    return games.filter(g => g.title.toLowerCase().includes(searchQuery.toLowerCase()));
-  }, [games, searchQuery]);
-
-  return html`
-    <div className="animate-in space-y-10">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-8">
-        ${filtered.map(game => html`
-          <${Link} key=${game.id} to="/game/${game.id}" className="command-card flex flex-col glass-panel rounded-3xl overflow-hidden border border-white/5 group shadow-lg">
-            <div className="aspect-[16/10] overflow-hidden relative bg-slate-900">
-              <img src="${game.thumbnail}" className="w-full h-full object-cover grayscale-[0.6] group-hover:grayscale-0 group-hover:scale-110 transition-all duration-700" loading="lazy" />
-              <div className="absolute inset-0 bg-indigo-600/0 group-hover:bg-indigo-600/10 transition-colors"></div>
-              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                <div className="p-3 bg-indigo-600 rounded-full shadow-xl">
-                  <${Play} className="w-5 h-5 text-white fill-current" />
+        <main className="flex-1 max-w-[1600px] mx-auto w-full px-8 py-16 flex flex-col lg:flex-row gap-16">
+          <aside className="w-full lg:w-80 space-y-12 shrink-0 h-fit lg:sticky lg:top-36">
+            <div className="space-y-4">
+              <p className="px-6 text-[11px] font-black uppercase tracking-[0.5em] text-slate-600">Categories</p>
+              <nav className="flex lg:flex-col gap-2 overflow-x-auto pb-4 lg:pb-0 scrollbar-hide">
+                ${['all', GameCategory.ACTION, GameCategory.STRATEGY, GameCategory.DRIVING, GameCategory.RETRO].map(c => html`
+                  <button key=${c} onClick=${() => setCategory(c)} className=${`px-8 py-5 rounded-[2rem] text-[12px] font-black uppercase tracking-[0.2em] whitespace-nowrap transition-all ${category === c ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'text-slate-500 hover:text-slate-200 hover:bg-white/5'}`}>
+                    ${c === 'all' ? 'All Units' : c}
+                  </button>
+                `)}
+              </nav>
+            </div>
+          </aside>
+          
+          <div className="flex-1 min-w-0">
+            <${Routes}>
+              <${Route} path="/" element=${html`
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-8 pb-32">
+                  ${filtered.map(game => html`
+                    <${Link} key=${game.id} to="/game/${game.id}" className="glass-panel rounded-[3rem] overflow-hidden group border border-white/5 flex flex-col hover:border-indigo-500/40 transition-all hover:-translate-y-2">
+                      <div className="aspect-[16/10] relative overflow-hidden bg-slate-900">
+                        <img src="${game.thumbnail}" className="w-full h-full object-cover opacity-50 grayscale transition-all duration-700 group-hover:grayscale-0 group-hover:opacity-100 group-hover:scale-105" />
+                        <div className="absolute top-6 left-6 px-4 py-1.5 bg-black/80 rounded-full text-[9px] font-black text-indigo-400 uppercase tracking-widest border border-white/10">${game.category}</div>
+                      </div>
+                      <div className="p-10 space-y-4 flex-1">
+                        <h3 className="font-orbitron text-xl font-bold text-white uppercase group-hover:text-indigo-400 transition-colors">${game.title}</h3>
+                        <p className="text-[12px] text-slate-500 line-clamp-2 leading-relaxed font-medium">${game.description}</p>
+                      </div>
+                    <//>
+                  `)}
+                  ${filtered.length === 0 && html`<div className="col-span-full py-40 text-center opacity-30 font-orbitron text-xs uppercase tracking-[1em]">NO_UNITS_FOUND</div>`}
                 </div>
-              </div>
-            </div>
-            <div className="p-6 space-y-3">
-              <h3 className="font-orbitron text-sm font-bold text-white group-hover:text-indigo-400 truncate pr-4">${game.title}</h3>
-              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em]">${game.category}</p>
-            </div>
-          <//>
-        `)}
+              `} />
+              <${Route} path="/game/:id" element=${html`<${GameView} games=${GAMES} />`} />
+            <//>
+          </div>
+        </main>
+        <${ARES_HUD} />
       </div>
-    </div>
+    <//>
   `;
 };
 
 const GameView = ({ games }) => {
   const { pathname } = useLocation();
-  const id = pathname.split('/').pop();
-  const game = games.find(g => g.id === id);
-  const [guide, setGuide] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
-  
-  useEffect(() => {
-    if (game) {
-      getGameGuide(game.title).then(setGuide);
-      setIsLoading(true);
-      window.scrollTo(0, 0);
-    }
-  }, [game]);
+  const gameId = pathname.split('/').pop();
+  const game = games.find(g => g.id === gameId);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
-  if (!game) return html`<div className="p-40 text-center font-orbitron text-slate-500">ERR: MODULE_MISSING</div>`;
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [gameId]);
+
+  if (!game) return html`<div className="py-40 text-center font-orbitron opacity-40 uppercase tracking-[1em]">MODULE_NOT_FOUND</div>`;
 
   return html`
-    <div className="max-w-[1500px] mx-auto px-6 py-10 space-y-10 animate-in">
+    <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-32">
       <div className="flex items-center justify-between">
-        <${Link} to="/" className="inline-flex items-center gap-3 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-white transition-colors bg-white/5 px-4 py-2 rounded-xl">
-          <${ArrowLeft} className="w-3.5 h-3.5" />
-          Directory Hub
+        <${Link} to="/" className="inline-flex items-center gap-4 text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 hover:text-white transition-all bg-white/5 px-8 py-3 rounded-full border border-white/5">
+          <${ArrowLeft} className="w-4 h-4" /> Extraction Zone
         <//>
+        <div className="text-[10px] font-bold text-slate-700 font-mono uppercase tracking-widest">SESS_ID: ${game.id}</div>
       </div>
-
-      <div className=${`group relative aspect-video w-full bg-slate-950 rounded-[3rem] overflow-hidden border border-white/10 shadow-2xl`}>
-        <iframe src="${game.url}" className="w-full h-full border-0" allow="autoplay; fullscreen; keyboard" onLoad=${() => setIsLoading(false)} />
-        ${isLoading && html`
-          <div className="absolute inset-0 bg-[#020617] flex flex-col items-center justify-center z-50">
-            <div className="relative mb-8">
-              <div className="w-24 h-24 border-t-2 border-indigo-500 rounded-full animate-spin"></div>
-            </div>
-            <p className="text-[10px] font-black text-white uppercase tracking-widest text-center">Decrypting Module...</p>
-          </div>
-        `}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-        <div className="lg:col-span-2 space-y-6">
-          <h1 className="font-orbitron text-4xl lg:text-5xl font-black text-white uppercase tracking-tighter">${game.title}</h1>
-          <p className="text-slate-400 text-lg leading-relaxed max-w-4xl font-medium">${game.description}</p>
-        </div>
-        <div className="glass-panel p-8 rounded-[2.5rem] border border-white/5 space-y-6">
-          <h4 className="text-[10px] font-black uppercase tracking-widest text-indigo-400 flex items-center gap-2">
-            <${Sparkles} className="w-4 h-4" />
-            Tactical Analysis
-          </h4>
-          <div className="text-[11px] text-slate-300 font-mono whitespace-pre-wrap leading-relaxed opacity-80 italic">${guide || 'Generating neural feed...'}</div>
-        </div>
-      </div>
-    </div>
-  `;
-};
-
-const MathHubApp = () => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [cloakEnabled, setCloakEnabled] = useState(() => localStorage.getItem('hub_cloak') === 'true');
-  const [performanceSettings, setPerformanceSettings] = useState(() => {
-    try {
-      const saved = localStorage.getItem('hub_performance');
-      return saved ? JSON.parse(saved) : { gpuBoost: true, ultraLight: false };
-    } catch {
-      return { gpuBoost: true, ultraLight: false };
-    }
-  });
-
-  // Handle emergency loader dismissal
-  useEffect(() => {
-    const loader = document.getElementById('emergency-loader');
-    if (loader) {
-      setTimeout(() => {
-        loader.style.opacity = '0';
-        setTimeout(() => loader.style.display = 'none', 500);
-      }, 800);
-    }
-  }, []);
-
-  useEffect(() => {
-    const handlePanic = (e) => {
-        if (e.key === 'Escape') window.location.replace(PANIC_URL);
-    };
-    window.addEventListener('keydown', handlePanic);
-    return () => window.removeEventListener('keydown', handlePanic);
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem('hub_cloak', String(cloakEnabled));
-    document.title = cloakEnabled ? "Google Docs" : "Math Hub | Command Center";
-  }, [cloakEnabled]);
-
-  useEffect(() => {
-    localStorage.setItem('hub_performance', JSON.stringify(performanceSettings));
-    document.body.classList.toggle('ultra-light', performanceSettings.ultraLight);
-  }, [performanceSettings]);
-
-  const updatePerformance = (key, val) => setPerformanceSettings(p => ({ ...p, [key]: val }));
-
-  return html`
-    <div className="min-h-screen flex flex-col bg-[#020617] text-slate-200">
-      <${Navbar} onSearch=${setSearchQuery} />
       
-      <main className="flex-1 max-w-[1600px] mx-auto w-full px-6 py-12 flex gap-12">
-        <${Sidebar} />
-        <div className="flex-1 min-w-0">
-          <${Routes}>
-            <${Route} path="/" element=${html`<${HomePage} games=${GAMES} searchQuery=${searchQuery} />`} />
-            <${Route} path="/game/:id" element=${html`<${GameView} games=${GAMES} />`} />
-            <${Route} path="/settings" element=${html`
-              <${SettingsView} 
-                cloakEnabled=${cloakEnabled} 
-                onToggleCloak=${() => setCloakEnabled(!cloakEnabled)} 
-                performanceSettings=${performanceSettings} 
-                onUpdatePerformance=${updatePerformance} 
-              />
-            `} />
-          <//>
+      <div className="relative aspect-video w-full bg-black rounded-[4rem] overflow-hidden border border-white/10 shadow-[0_0_100px_-20px_rgba(99,102,241,0.2)] group ring-1 ring-indigo-500/10">
+        <iframe 
+          src="${game.url}" 
+          className="w-full h-full border-0" 
+          allow="autoplay; fullscreen; keyboard; gamepad" 
+          sandbox="allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-popups-to-escape-sandbox allow-presentation allow-scripts allow-same-origin allow-storage-access-by-user-activation"
+          ref=${iframeRef} 
+        />
+        <button onClick=${() => iframeRef.current?.requestFullscreen()} className="absolute bottom-12 right-12 p-3 bg-black/60 backdrop-blur-3xl border border-white/10 text-white rounded-xl opacity-0 group-hover:opacity-100 hover:bg-indigo-600 transition-all">
+          <${Maximize} className="w-5 h-5" />
+        </button>
+      </div>
+      
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+        <div className="lg:col-span-2 space-y-6">
+          <h1 className="font-orbitron text-6xl font-black text-white uppercase tracking-tighter">${game.title}</h1>
+          <p className="text-slate-400 text-2xl leading-relaxed font-medium max-w-5xl">${game.description}</p>
         </div>
-      </main>
+        <div className="glass-panel p-10 rounded-[3rem] border border-white/5 space-y-6 h-fit">
+           <div className="flex items-center gap-4 text-indigo-400 font-black text-[10px] uppercase tracking-widest"><${Shield} className="w-5 h-5" /> Status: Online</div>
+           <div className="space-y-4 font-mono text-[11px] text-slate-500">
+              <div className="flex justify-between border-b border-white/5 pb-2"><span>Category</span><span className="text-indigo-400 uppercase">${game.category}</span></div>
+              <div className="flex justify-between border-b border-white/5 pb-2"><span>Telemetry</span><span className="text-green-400">Stable</span></div>
+              <div className="flex justify-between"><span>Latency</span><span className="text-indigo-500">2.1ms</span></div>
+           </div>
+           <button onClick=${() => window.location.replace("https://google.com")} className="w-full py-4 bg-red-600/10 text-red-500 font-black text-[10px] uppercase tracking-widest rounded-2xl border border-red-500/20 hover:bg-red-600 hover:text-white transition-all">PANIC_EXIT (ESC)</button>
+        </div>
+      </div>
     </div>
   `;
 };
 
-const RootWrapper = () => html`<${Router}><${MathHubApp} /><//>`;
-export default RootWrapper;
+export default App;
